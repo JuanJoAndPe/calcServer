@@ -94,36 +94,6 @@ app.get('/protected', authenticateJWT, (req, res) => {
   res.json({ message: `Hola ${req.user.username}, tienes rol ${req.user.role}` });
 });
 
-// app.post('/datadiver', authenticateJWT, async (req, res) => {
-//   try {
-//     const loginRes = await axios.post('https://datadiverservi.com/api/login', {
-//       params: {
-//         email: 'api@demo.com',
-//         password: '123456'
-//       }
-//     });
-
-//     const tokenDbook = loginRes.data?.token;
-//     if (!token) {
-//       return res.status(500).json({ error: 'No se pudo obtener el token de DataDiver' });
-//     }
-//     const queryRes = await axios.get('https://datadiverservi.com/api/busqueda-test', {
-//       params: { nombre: req.query.nombre || '1' },
-//       headers: {
-//         'Authorization': `Bearer ${tokenDbook}`
-//       }
-//     });
-
-//     res.json(queryRes.data);
-//   } catch (error) {
-//     console.error('Error en /datadiver:', error.response?.data || error.message);
-//     res.status(500).json({
-//       error: error.message,
-//       details: error.response?.data || null
-//     });
-//   }
-// });
-
 // Conectar a MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Conectado a MongoDB'))
