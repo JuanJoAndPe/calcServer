@@ -62,9 +62,9 @@ app.post('/login', (req, res) => {
 // Proxy autenticado
 app.post('/proxy', authenticateJWT, async (req, res) => {
   try {
-    const response = await axios.post('https://api-test.avalburo.com/services/V8/getWebService', req.body, {
+    const response = await axios.post('https://api.avalburo.com/services/V8/getWebService', req.body, {
       headers: {
-        'Authorization': 'Basic ' + Buffer.from('WSTEST-TAQTICA:1Ex#YXTbaK').toString('base64'),
+        'Authorization': 'Basic ' + Buffer.from('WS-TAQTICA:&jg4I(iKGA').toString('base64'),
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0'
       }
