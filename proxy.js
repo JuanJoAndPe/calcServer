@@ -8,7 +8,13 @@ const enviarCorreoGraph = require('./enviarCorreoGraph');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+const corsOptions = {
+  origin: 'https://tactiqaec.com',  
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Usuarios
@@ -62,9 +68,9 @@ app.post('/login', (req, res) => {
 // Proxy autenticado
 app.post('/proxy', authenticateJWT, async (req, res) => {
   try {
-    const response = await axios.post('https://api.avalburo.com/services/V8/getWebService', req.body, {
+    const response = await axios.post('https://api-test.avalburo.com/services/V8/getWebService', req.body, {
       headers: {
-        'Authorization': 'Basic ' + Buffer.from('WS-TAQTICA:&jg4I(iKGA').toString('base64'),
+        'Authorization': 'Basic ' + Buffer.from('WSTEST-TAQTICA:1Ex#YXTbaK').toString('base64'),
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0'
       }
@@ -134,4 +140,6 @@ app.post('/enviarCorreo', async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log('Servidor corriendo en puerto 3000'));
+app.listen(3000, 'localhost', () => {
+  console.log("Servidor escuchando en localhost:3000");
+});
