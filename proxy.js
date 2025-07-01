@@ -140,6 +140,4 @@ app.post('/enviarCorreo', async (req, res) => {
   }
 });
 
-app.listen(3000, 'localhost', () => {
-  console.log("Servidor escuchando en localhost:3000");
-});
+app.listen(3000, () => console.log('Servidor corriendo en puerto 3000'));
