@@ -4,13 +4,14 @@ const axios = require('axios');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const enviarCorreoGraph = require('./enviarCorreoGraph');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Usuarios (en producción deberían estar en una base de datos)
+// Usuarios
 const users = [
   {
     id: 1,
@@ -26,18 +27,14 @@ const users = [
   }
 ];
 
-// Middleware de autenticación
+// Middleware JWT
 const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (authHeader) {
     const token = authHeader.split(' ')[1];
-    
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      
+      if (err) return res.sendStatus(403);
       req.user = user;
       next();
     });
@@ -46,59 +43,44 @@ const authenticateJWT = (req, res, next) => {
   }
 };
 
-// Ruta de login
+// Login
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  
   const user = users.find(u => u.username === username);
-  if (!user) {
-    return res.status(401).json({ error: 'Usuario no encontrado' });
+  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+    return res.status(401).json({ error: 'Credenciales inválidas' });
   }
-  
-  if (!bcrypt.compareSync(password, user.passwordHash)) {
-    return res.status(401).json({ error: 'Contraseña incorrecta' });
-  }
-  
+
   const token = jwt.sign(
     { userId: user.id, username: user.username, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
-  
   res.json({ token });
 });
 
-
-// Proteger la ruta del proxy con autenticación
+// Proxy autenticado
 app.post('/proxy', authenticateJWT, async (req, res) => {
   try {
-    const response = await axios.post('https://api.avalburo.com/services/V8/getWebService', req.body, {
+    const response = await axios.post('https://api-test.avalburo.com/services/V8/getWebService', req.body, {
       headers: {
-        'Authorization': 'Basic ' + Buffer.from('WS-TAQTICA:&jg4I(iKGA').toString('base64'),
+        'Authorization': 'Basic ' + Buffer.from('WSTEST-TAQTICA:1Ex#YXTbaK').toString('base64'),
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0'
       }
     });
     res.json(response.data);
   } catch (error) {
     console.error('Error en /proxy:', error.response?.data || error.message);
-    res.status(500).json({
-      error: error.message,
-      details: error.response?.data || null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Ruta protegida de ejemplo
-app.get('/protected', authenticateJWT, (req, res) => {
-  res.json({ message: `Hola ${req.user.username}, tienes rol ${req.user.role}` });
-});
-
-// Conectar a MongoDB
+// MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Conectado a MongoDB'))
   .catch(err => console.error('Error al conectar a MongoDB:', err));
-  // Esquema y modelo
+
 const AnalisisSchema = new mongoose.Schema({
   cedulaDeudor: String,
   nombreDeudor: String,
@@ -129,7 +111,6 @@ const AnalisisSchema = new mongoose.Schema({
 
 const Analisis = mongoose.model('Analisis', AnalisisSchema);
 
-// Ruta para guardar análisis
 app.post('/guardarAnalisis', async (req, res) => {
   try {
     const nuevoAnalisis = new Analisis(req.body);
@@ -141,4 +122,16 @@ app.post('/guardarAnalisis', async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log('Servidor proxy corriendo en puerto 3000'));
+// Enviar correo con Graph
+app.post('/enviarCorreo', async (req, res) => {
+  const { pdfBase64, nombreArchivo, destinatarios } = req.body;
+  try {
+    await enviarCorreoGraph(destinatarios, pdfBase64, nombreArchivo);
+    res.json({ mensaje: 'Correo enviado con Microsoft Graph' });
+  } catch (err) {
+    console.error('Error al enviar correo:', err);
+    res.status(500).json({ error: 'Error al enviar con Graph' });
+  }
+});
+
+app.listen(3000, () => console.log('Servidor corriendo en puerto 3000'));
