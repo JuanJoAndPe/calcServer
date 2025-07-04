@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const enviarCorreoGraph = require('./enviarCorreoGraph');
+const qs = require('qs');
 require('dotenv').config();
 
 const app = express();
@@ -62,7 +63,7 @@ app.post('/login', (req, res) => {
 // Proxy autenticado
 app.post('/proxy', authenticateJWT, async (req, res) => {
   try {
-    const response = await axios.post('https://api.avalburo.com/services/V8/getWebService', req.body, {
+    const response = await axios.post(process.env.AVAL_URL, req.body, {
       headers: {
         'Authorization': 'Basic ' + Buffer.from('WS-TAQTICA:&jg4I(iKGA').toString('base64'),
         'Content-Type': 'application/json',
@@ -131,6 +132,101 @@ app.post('/enviarCorreo', async (req, res) => {
   } catch (err) {
     console.error('Error al enviar correo:', err);
     res.status(500).json({ error: 'Error al enviar con Graph' });
+  }
+});
+
+// Enviar a Excel - Versión actualizada para manejar tablas existentes
+app.post('/guardarExcel', authenticateJWT, async (req, res) => {
+  try {
+    const username = req.user.username;
+    const tokenRes = await axios.post(
+      `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/v2.0/token`,
+      qs.stringify({
+        grant_type: 'client_credentials',
+        client_id: process.env.CLIENT_ID2,
+        client_secret: process.env.CLIENT_SECRET2,
+        scope: 'https://graph.microsoft.com/.default',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    const accessToken = tokenRes.data.access_token;
+
+    const userPrincipal = 'pmantilla@tactiqaec.com';
+    const filePath = 'ORIGINACION/ANÁLISIS DE CRÉDITOS/BASE_AUTOMATICA.xlsx';
+
+    const file = await axios.get(
+      `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/root:/${filePath}:`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const fileId = file.data.id;
+
+    const sheetRes = await axios.get(
+      `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/items/${fileId}/workbook/worksheets`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const sheetName = sheetRes.data.value[0].name;
+
+    const tablesRes = await axios.get(
+      `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/items/${fileId}/workbook/worksheets('${sheetName}')/tables`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    let tableId;
+    if (tablesRes.data.value.length > 0) {
+      tableId = tablesRes.data.value[0].id;
+    } else {
+      const tableRes = await axios.post(
+        `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/items/${fileId}/workbook/worksheets('${sheetName}')/tables/add`,
+        { address: 'A1:V1', hasHeaders: true },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      tableId = tableRes.data.id;
+
+      await axios.post(
+        `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/items/${fileId}/workbook/tables/${tableId}/rows/add`,
+        {
+          values: [["FECHA", "CEDULA", "APELLIDOS_NOMBRES", "CEDULA_CYG", "APELLIDOS_NOMBRES_CYG", "CONCESIONARIO", "LOCAL", "ASESOR", "MARCA", "MODELO", "VALOR", "ENTRADA", "PORCENTAJE", "SEG_DESGRAVAMEN", "SEG_VEHICULAR", "FIDEICOMISO", "DISPOSITIVO", "MONTO_FINANCIAR", "PLAZO", "SCORE", "SCORE_CYG", "DECISION"]]
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+    }
+
+    await axios.post(
+      `https://graph.microsoft.com/v1.0/users/${userPrincipal}/drive/items/${fileId}/workbook/tables/${tableId}/rows/add`,
+      {
+        values: [[
+          req.body.fecha,
+          req.body.cedula,
+          req.body.nombre,
+          req.body.cedula_cyg,
+          req.body.conyuge,
+          req.body.concesionario,
+          req.body.local,
+          username,
+          req.body.marca,
+          req.body.modelo,
+          req.body.valor,
+          req.body.entrada,
+          req.body.porcentaje,
+          req.body.seg_desgravamen,
+          req.body.seg_vehicular,
+          req.body.fideicomiso,
+          req.body.dispositivo,
+          req.body.monto_financiar,
+          req.body.plazo,
+          req.body.score,
+          req.body.score_cyg,
+          req.body.decision,
+        ]]
+      },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    res.json({ mensaje: 'Datos guardados correctamente en Excel' });
+
+  } catch (err) {
+    console.error('Error al guardar en Excel:', err.response?.data || err.message);
+    res.status(500).json({ error: 'No se pudo guardar en Excel' });
   }
 });
 
