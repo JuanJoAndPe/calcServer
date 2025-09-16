@@ -25,6 +25,12 @@ const users = [
     username: process.env.ANALYST_USER,
     passwordHash: bcrypt.hashSync(process.env.ANALYST_PASSWORD, 10),
     role: 'analyst'
+  },
+  {
+    id: 3,
+    username: process.env.GERENTE_USER,
+    passwordHash: bcrypt.hashSync(process.env.GERENTE_PASSWORD,10),
+    role: 'admin'
   }
 ];
 
