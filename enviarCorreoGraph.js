@@ -24,6 +24,10 @@ async function enviarCorreoGraph(destinatarios, pdfBase64, nombreArchivo) {
     }
     console.log('Primeros caracteres de contentBytes:', contentBytes.slice(0, 50));
 
+    let destinatariosArray = Array.isArray(destinatarios)
+    ? destinatarios
+    : destinatarios.split(",").map(correo => correo.trim());
+
     const emailData = {
       message: {
         subject: 'Análisis Crediticio PDF',
@@ -31,7 +35,7 @@ async function enviarCorreoGraph(destinatarios, pdfBase64, nombreArchivo) {
           contentType: 'Text',
           content: 'Adjunto se encuentra el informe de análisis crediticio.'
         },
-        toRecipients: destinatarios.map(email => ({
+        toRecipients: destinatariosArray.map(email => ({
           emailAddress: { address: email }
         })),
         attachments: [
