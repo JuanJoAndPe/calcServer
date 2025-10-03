@@ -3,6 +3,17 @@ require('dotenv').config();
 
 async function enviarCorreoGraph(destinatarios, pdfBase64, nombreArchivo) {
   try {
+    if (!Array.isArray(destinatarios) || destinatarios.length === 0) {
+      throw new Error('No se recibieron destinatarios válidos');
+    }
+    if (!pdfBase64) {
+      throw new Error('No se recibió el archivo PDF en base64');
+    }
+    if (!nombreArchivo) {
+      throw new Error('No se recibió el nombre del archivo');
+    }
+
+    // Obtener token
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/v2.0/token`,
       new URLSearchParams({
@@ -59,7 +70,7 @@ async function enviarCorreoGraph(destinatarios, pdfBase64, nombreArchivo) {
 
     console.log('Correo enviado exitosamente.');
   } catch (error) {
-    console.error('Error al enviar correo:', error.response?.data || error);
+    console.error('Error al enviar correo:', error.response?.data || error.message || error);
   }
 }
 
